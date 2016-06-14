@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+#coding=utf-8
 '''
 
                                                                                          ;$$;
@@ -116,10 +116,7 @@ class Post:
 
     def get_title(self):
         if hasattr(self, "title"):
-            if platform.system() == 'Windows':
-                title = self.title.decode('utf-8').encode('gbk')
-                return title
-            else:
+
                 return self.title
         else:
             if self.meta == None:
@@ -127,11 +124,8 @@ class Post:
             meta = self.meta
             title = meta['title']
             self.title = title
-            if platform.system() == 'Windows':
-                title = title.decode('utf-8').encode('gbk')
-                return title
-            else:
-                return title
+
+            return title
 
     def get_content(self):
         if self.meta == None:
@@ -143,7 +137,7 @@ class Post:
             return content
         else:
             return content
-    
+
     def get_author(self):
         if hasattr(self, "author"):
             return self.author
@@ -176,7 +170,7 @@ class Post:
         for topic in meta['topics']:
             topic_list.append(topic['name'])
         return topic_list
-      
+
 class Column:
     url = None
     meta = None
@@ -305,10 +299,7 @@ class Question:
 
     def get_title(self):
         if hasattr(self, "title"):
-            if platform.system() == 'Windows':
-                title = self.title.decode('utf-8').encode('gbk')
-                return title
-            else:
+
                 return self.title
         else:
             if self.soup == None:
@@ -316,11 +307,8 @@ class Question:
             soup = self.soup
             title = soup.find("h2", class_="zm-item-title").string.encode("utf-8").replace("\n", "")
             self.title = title
-            if platform.system() == 'Windows':
-                title = title.decode('utf-8').encode('gbk')
-                return title
-            else:
-                return title
+
+            return title
 
     def get_detail(self):
         if self.soup == None:
@@ -544,15 +532,9 @@ class User:
     def get_user_id(self):
         if self.user_url == None:
             # print "I'm anonymous user."
-            if platform.system() == 'Windows':
-                return "匿名用户".decode('utf-8').encode('gbk')
-            else:
                 return "匿名用户"
         else:
             if hasattr(self, "user_id"):
-                if platform.system() == 'Windows':
-                    return self.user_id.decode('utf-8').encode('gbk')
-                else:
                     return self.user_id
             else:
                 if self.soup == None:
@@ -561,10 +543,8 @@ class User:
                 user_id = soup.find("div", class_="title-section ellipsis") \
                     .find("span", class_="name").string.encode("utf-8")
                 self.user_id = user_id
-                if platform.system() == 'Windows':
-                    return user_id.decode('utf-8').encode('gbk')
-                else:
-                    return user_id
+
+                return user_id
 
     def get_head_img_url(self, scale=4):
         """
@@ -668,7 +648,7 @@ class User:
                 if i.isdigit():
                     I=I+i
             topics_num=int(I)
-            return topics_num       
+            return topics_num
 
     def get_agree_num(self):
         if self.user_url == None:
@@ -1029,8 +1009,19 @@ class User:
             return
             yield
 
-
-
+    def basic(self,type="json"):
+        data={}
+        data["user_id"]=self.user_id
+        data["user_url"]=self.user_url
+        user=User(self.user_url)
+        data["gender"]=user.get_gender()
+        data["img"]=user.get_head_img_url()
+        data["topics_num"]=user.get_topics_num()
+        data["asks_num"]=user.get_asks_num()
+        if type=="json":
+            return  json.dumps(data)
+        else:
+            return  data
 class Answer:
     answer_url = None
     # session = None
@@ -1195,18 +1186,9 @@ class Answer:
             f.write("\n" + "原链接: " + self.answer_url)
         f.close()
 
-    # def to_html(self):
-    # content = self.get_content()
-    # if self.get_author().get_user_id() == "匿名用户":
-    # file_name = self.get_question().get_title() + "--" + self.get_author().get_user_id() + "的回答.html"
-    # f = open(file_name, "wt")
-    # print file_name
-    # else:
-    # file_name = self.get_question().get_title() + "--" + self.get_author().get_user_id() + "的回答.html"
-    # f = open(file_name, "wt")
-    # print file_name
-    # f.write(str(content))
-    # f.close()
+    ###结果保存到数据库里面，因为结果是结构化的，通过ORM插入数据库，支持常用的数据库(Mysql)
+    def to_db(self,table,):
+        pass
 
     def to_md(self):
         content = self.get_content()
@@ -1323,6 +1305,19 @@ class Answer:
                     voter_url = "http://www.zhihu.com" + str(voter_info.a["href"])
                     voter_id = voter_info.a["title"].encode("utf-8")
                     yield User(voter_url, voter_id)
+    ###添加评论内容,有api接口
+    def get_comments(self,page=1):
+        pass
+    def to_json(self):
+        ans=Answer(self.answer_url)
+        data={}
+        data["answer_url"]=self.answer_url
+        data["author"]=ans.get_author()
+        data["question"]=ans.get_question()
+        data["content"]=ans.get_content()
+        data["upvote"]=ans.get_upvote()
+
+
 
 
 class Collection:
@@ -1458,3 +1453,46 @@ class Collection:
             if j > n:
                 break
             yield answer
+
+###获取某个评论下面的评论，按照页来判断
+class Comments(object):
+    comments_id=None
+    author_id=None
+    author_name=None
+    content=None
+    create_time=None
+    id=None
+    page=None
+    def __init__(self, id,page=1):
+        self.id=id
+        self.page=page
+
+    def get_comments(self):
+        if self.page==1:
+
+            self.url="https://www.zhihu.com/r/answers/%s/comments"%(id)
+        else :
+            self.url="https://www.zhihu.com/r/answers/%s/comments?page=%s"%(id,self.page)
+        headers = {
+                    'User-Agent': "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36",
+                    'Host': "www.zhihu.com",
+                    'Origin': "http://www.zhihu.com",
+                    'Pragma': "no-cache",
+
+                }
+
+        content=requests.get(self.url,headers=headers).content
+        try:
+
+            data=json.loads(content)["data"]
+
+        except Exception as e:
+            data={}
+        for d in data:
+            auther_id=d.get("author").get("slug")
+            author_name=d.get("author").get("name")
+            content=d.get("content")
+            create_time=d.get("createdTime")
+            comment_id=d.get("id")
+            yield  {"author_id":auther_id,"author_name":author_name,"content":content,'create_time':create_time,'comment_id':comment_id}
+
